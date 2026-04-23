@@ -1,0 +1,325 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"stud/logic"
+	"stud/models"
+)
+
+var weeks = []string{
+	"Monday",
+	"Tuesday",
+	"Wednesday",
+	"Thursday",
+	"Friday",
+	"Saturday",
+	"Sunday",
+}
+
+func main() {
+
+	os.MkdirAll("data", os.ModePerm)
+
+	scanner := bufio.NewScanner(os.Stdin)
+
+	fmt.Println("Введиет название файла: ")
+
+	scanner.Scan()
+	FileName := scanner.Text()
+
+	datapath := "data/" + FileName + ".json"
+
+	logic.Lessons, _ = logic.LoadFromFile(datapath)
+
+	if len(logic.Lessons) == 0 {
+		logic.Lessons = []models.Lesson{}
+		logic.SaveToFile(logic.Lessons, datapath)
+
+	}
+
+	fmt.Println("Введите своё имя")
+
+	scanner.Scan()
+
+	name := scanner.Text()
+
+	fmt.Println("Ваше имя: ", name)
+
+	serv(FileName)
+
+	for {
+		//=========================================
+
+		fmt.Println("")
+		fmt.Println("1 - добавить")
+		fmt.Println("2 - удалить")
+		fmt.Println("3 - показать список")
+		fmt.Println("4 - сегодня")
+		fmt.Println("5 - редакт")
+		fmt.Println("6 - выход")
+		fmt.Println("")
+
+		//=========================================
+
+		fmt.Println("")
+		fmt.Println("Введите что хотите сделать")
+
+		scanner.Scan()
+		todo := scanner.Text()
+
+		todo = strings.ToLower(todo)
+
+		switch todo {
+
+		case "добавить", "1":
+
+			fmt.Println("")
+			fmt.Println("Введите название предмета: ")
+
+			scanner.Scan()
+			title := scanner.Text()
+
+			fmt.Println("")
+			fmt.Println("Выберите дату: ")
+
+			for i, d := range weeks {
+				fmt.Printf("%d - %s\n", i+1, d)
+			}
+
+			scanner.Scan()
+			date := scanner.Text()
+
+			index, _ := strconv.Atoi(date)
+
+			if index < 1 || len(weeks) < index {
+				fmt.Println("Невереный выбор!!!")
+				continue
+			}
+
+			week := weeks[index-1]
+
+			fmt.Println("")
+			fmt.Println("Введите время в формате (xx:xx) : ")
+
+			scanner.Scan()
+			times := scanner.Text()
+
+			_, err := time.Parse("15:04", times)
+
+			if err != nil {
+				fmt.Println("Неверный формат времени(xx:xx)")
+				continue
+
+			}
+
+			fmt.Println("")
+			fmt.Println("Введите описание(если надо): ")
+
+			scanner.Scan()
+			desc := scanner.Text()
+
+			fmt.Println("")
+			lesson := models.Lesson{
+				Title:       title,
+				Day:         week,
+				Time:        times,
+				Description: desc,
+			}
+
+			logic.AddLesson(lesson)
+
+			logic.SaveToFile(logic.Lessons, datapath)
+			continue
+
+		//=================================================
+
+		case "удалить", "2":
+
+			fmt.Println("Номер предмета")
+
+			scanner.Scan()
+
+			strid := scanner.Text()
+			id, err := strconv.Atoi(strid)
+
+			if err != nil{
+				fmt.Errorf("Invalid type id")
+				return
+			}
+
+			logic.DeleteLesson(id)
+			logic.SaveToFile(logic.Lessons, datapath)
+
+		//=================================================
+
+		case "показать", "3":
+
+			lessons := logic.ShowLessons()
+
+			if len(lessons) == 0 {
+				fmt.Println("Список пуст")
+				continue
+			}
+
+			logic.SortTodayLesseonsTime()
+
+			fmt.Println("📚 Расписание:")
+
+			for i, l := range lessons {
+				fmt.Printf("%d. %s | %s | %s\n", i+1, l.Title, l.Day, l.Time)
+
+				if l.Description != "" {
+					fmt.Println("   📝", l.Description)
+				}
+			}
+
+			fmt.Println("")
+			fmt.Println("Введите что хотите сделать: ")
+
+			fmt.Println("")
+			fmt.Println("1 - Показать предметы на выбранный день")
+			fmt.Println("2 - Показать когда предмет по дням")
+			fmt.Println("3 - Закрыть список")
+			fmt.Println("")
+
+			scanner.Scan()
+			id := scanner.Text()
+
+			index, err := strconv.Atoi(id)
+
+			if err != nil {
+				fmt.Println("Введите число")
+				continue
+			}
+
+			switch index {
+
+			case 1:
+				fmt.Println("")
+				fmt.Println("Введите день:")
+				fmt.Println("")
+				scanner.Scan()
+				day := scanner.Text()
+				lessons := logic.FilterListDay(day)
+
+				for _, d := range lessons {
+					fmt.Println("")
+					fmt.Printf("%d. %s | %s | %s | %s\n", d.ID, d.Title, d.Day, d.Time, d.Description)
+					fmt.Println("")
+				}
+
+			case 2:
+				fmt.Println("")
+				fmt.Println("Введите предмет:")
+				fmt.Println("")
+				scanner.Scan()
+				less := scanner.Text()
+				lessons := logic.FilterListLess(less)
+
+				for _, l := range lessons {
+					fmt.Println("")
+					fmt.Printf("%d. %s | %s | %s | %s\n", l.ID, l.Title, l.Day, l.Time, l.Description)
+					fmt.Println("")
+				}
+
+			case 3:
+				continue
+
+			}
+
+		//=================================================
+
+		case "сегодня", "4":
+
+			lessons := logic.TodayLessons()
+
+			logic.SortTodayLesseonsTime()
+
+			for _, l := range lessons {
+
+				status := logic.GetLessonStatus(l)
+
+				var icon string
+
+				switch status {
+				case "first":
+					icon = "🟣"
+				case "past":
+					icon = "🔴"
+				case "current":
+					icon = "🟢"
+				case "future":
+					icon = "🟡"
+				}
+
+				fmt.Printf("%s %d. %s | %s | %s\n", icon, l.ID, l.Title, l.Day, l.Time)
+			}
+
+			//=================================================
+
+		case "редакт", "5":
+			fmt.Println("")
+			fmt.Println("Введите номер задачи: ")
+
+			scanner.Scan()
+			id := scanner.Text()
+			index, err := strconv.Atoi(id)
+
+			if err != nil {
+				fmt.Println("Ошибка")
+				break
+			}
+
+			fmt.Println("")
+			fmt.Println("\nВведите что хотите изменить: ")
+			fmt.Println("")
+			fmt.Println("1 - название")
+			fmt.Println("2 - дата")
+			fmt.Println("3 - время")
+			fmt.Println("4 - описание")
+
+			scanner.Scan()
+			choice := scanner.Text()
+			choice = strings.ToLower(choice)
+
+			fmt.Println("")
+			fmt.Println("Введите новое значени:")
+
+			scanner.Scan()
+			value := scanner.Text()
+
+			logic.EditLesson(index, choice, value)
+			logic.SaveToFile(logic.Lessons, datapath)
+
+		case "выход", "6":
+			fmt.Println("")
+			fmt.Println("Сохранить файл?")
+			scanner.Scan()
+			input := scanner.Text()
+			input = strings.ToLower(input)
+			if input == "нет" {
+
+				os.Remove("data/" + FileName + ".json")
+				fmt.Println("Файл удалён!!!")
+				fmt.Println("")
+				fmt.Println("Пока!!!")
+				return
+
+			} else {
+				fmt.Println("Файл сохранён!!!")
+				fmt.Println("")
+				fmt.Println("Пока!!!")
+
+				return
+			}
+
+		}
+	}
+
+}
