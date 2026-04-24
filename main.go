@@ -8,8 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"stud/logic"
+
+	"stud/handler"
+	"stud/service"
 	"stud/models"
+	"stud/repository"
 )
 
 var weeks = []string{
@@ -35,11 +38,11 @@ func main() {
 
 	datapath := "data/" + FileName + ".json"
 
-	logic.Lessons, _ = logic.LoadFromFile(datapath)
+	repository.Lessons, _ = service.LoadFromFile(datapath)
 
-	if len(logic.Lessons) == 0 {
-		logic.Lessons = []models.Lesson{}
-		logic.SaveToFile(logic.Lessons, datapath)
+	if len(repository.GetLessons()) == 0 {
+		repository.Lessons = []models.Lesson{}
+		service.SaveToFile(datapath)
 
 	}
 
@@ -51,7 +54,7 @@ func main() {
 
 	fmt.Println("Ваше имя: ", name)
 
-	serv(FileName)
+	handler.Serv(FileName)
 
 	for {
 		//=========================================
@@ -132,9 +135,9 @@ func main() {
 				Description: desc,
 			}
 
-			logic.AddLesson(lesson)
+			service.AddLesson(lesson)
 
-			logic.SaveToFile(logic.Lessons, datapath)
+			service.SaveToFile( datapath)
 			continue
 
 		//=================================================
@@ -153,21 +156,21 @@ func main() {
 				return
 			}
 
-			logic.DeleteLesson(id)
-			logic.SaveToFile(logic.Lessons, datapath)
+			service.DeleteLesson(id)
+			service.SaveToFile(datapath)
 
 		//=================================================
 
 		case "показать", "3":
 
-			lessons := logic.ShowLessons()
+			lessons := service.ShowLessons()
 
 			if len(lessons) == 0 {
 				fmt.Println("Список пуст")
 				continue
 			}
 
-			logic.SortTodayLesseonsTime()
+			service.SortTodayLesseonsTime()
 
 			fmt.Println("📚 Расписание:")
 
@@ -206,7 +209,7 @@ func main() {
 				fmt.Println("")
 				scanner.Scan()
 				day := scanner.Text()
-				lessons := logic.FilterListDay(day)
+				lessons := service.FilterListDay(day)
 
 				for _, d := range lessons {
 					fmt.Println("")
@@ -220,7 +223,7 @@ func main() {
 				fmt.Println("")
 				scanner.Scan()
 				less := scanner.Text()
-				lessons := logic.FilterListLess(less)
+				lessons := service.FilterListLess(less)
 
 				for _, l := range lessons {
 					fmt.Println("")
@@ -237,13 +240,13 @@ func main() {
 
 		case "сегодня", "4":
 
-			lessons := logic.TodayLessons()
+			lessons := service.TodayLessons()
 
-			logic.SortTodayLesseonsTime()
+			service.SortTodayLesseonsTime()
 
 			for _, l := range lessons {
 
-				status := logic.GetLessonStatus(l)
+				status := service.GetLessonStatus(l)
 
 				var icon string
 
@@ -280,8 +283,8 @@ func main() {
 			fmt.Println("\nВведите что хотите изменить: ")
 			fmt.Println("")
 			fmt.Println("1 - название")
-			fmt.Println("2 - дата")
-			fmt.Println("3 - время")
+			fmt.Println("2 - время")
+			fmt.Println("3 - дата")
 			fmt.Println("4 - описание")
 
 			scanner.Scan()
@@ -294,8 +297,8 @@ func main() {
 			scanner.Scan()
 			value := scanner.Text()
 
-			logic.EditLesson(index, choice, value)
-			logic.SaveToFile(logic.Lessons, datapath)
+			service.EditLesson(index, choice, value)
+			service.SaveToFile(datapath)
 
 		case "выход", "6":
 			fmt.Println("")
