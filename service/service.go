@@ -31,23 +31,22 @@ func AddLesson(l models.Lesson) error {
 	lessID++
 	l.GroupId = groupid
 	
-	lessons = append(lessons, l)
-	repository.SetLessons(lessons)
+	return repository.AddLesson(l)
 
-	return nil
 }
 
-func DeleteLesson(id int) {
+func DeleteLesson(id int) error {
 	
 	lessons := repository.GetLessons()
 
 	for i, l := range lessons {
 		if l.ID == id {
 			lessons = append(lessons[:i], lessons[i+1:]...)
-			repository.SetLessons(lessons)
-			return
+			
+			return repository.DeleteLesson(id)
 		}
 	}
+	return fmt.Errorf("error")
 
 }
 
@@ -131,21 +130,7 @@ func EditLesson(id int, field string, value string) error {
 
 }
 
-func FilterListDay(day string) []models.Lesson {
 
-	lessons := repository.GetLessons()
-
-	var result []models.Lesson
-
-	for _, d := range lessons {
-		if strings.ToLower(d.Day) == strings.ToLower(day) {
-			result = append(result, d)
-
-		}
-	}
-
-	return result
-}
 
 func FilterListLess(less string) []models.Lesson {
 	lessons := repository.GetLessons()
@@ -258,9 +243,9 @@ func NextLessonToday() *models.Lesson {
 
 	return next
 }
-func SortTodayLesseonsTime() []models.Lesson {
 
-	lessons := repository.GetLessons()
+func SortTodayLessonsTime(lessons []models.Lesson) {
+
 
 	sort.Slice(lessons, func(i, j int) bool {
 		t1, _ := time.Parse("15:04", lessons[i].Time)
@@ -268,7 +253,6 @@ func SortTodayLesseonsTime() []models.Lesson {
 		return t1.Before(t2)
 
 	})
-	return lessons
 }
 
 func UpdateLesson(updated models.Lesson) error {
@@ -313,7 +297,10 @@ func SaveToFile(filepath string) error {
 	}
 	defer file.Close()
 
-	json.NewEncoder(file).Encode(lessons)
+	if	err := json.NewEncoder(file).Encode(lessons); err != nil{
+		return err
+	}
+
 	return nil
 }
 
@@ -321,7 +308,7 @@ func LoadFromFile(filepath string) ([]models.Lesson, error) {
 
 	file, err := os.Open(filepath)
 
-	lessons := repository.GetLessons()
+	var lessons []models.Lesson
 
 	if err != nil {
 		return []models.Lesson{}, err
@@ -329,10 +316,16 @@ func LoadFromFile(filepath string) ([]models.Lesson, error) {
 	defer file.Close()
 
 
-	json.NewDecoder(file).Decode(&lessons)
-	return lessons, err
+	if err := json.NewDecoder(file).Decode(&lessons); err != nil{
+		return lessons, err
+	}
+	return lessons, nil
 }
 
 //====================================================
+
+func RegisterUser(name string, password string, userRole string)(int, error){
+	return repository.CreateUser(name, password, userRole)
+}
 
 //====================================================

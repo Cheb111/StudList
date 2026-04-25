@@ -8,11 +8,9 @@ import (
 	"strings"
 	"time"
 
-
-	"stud/handler"
-	"stud/service"
 	"stud/models"
 	"stud/repository"
+	"stud/service"
 )
 
 var weeks = []string{
@@ -35,16 +33,8 @@ func main() {
 
 	scanner.Scan()
 	FileName := scanner.Text()
-
-	datapath := "data/" + FileName + ".json"
-
-	repository.Lessons, _ = service.LoadFromFile(datapath)
-
-	if len(repository.GetLessons()) == 0 {
-		repository.Lessons = []models.Lesson{}
-		service.SaveToFile(datapath)
-
-	}
+	datapath := "data/" + FileName + ".db"
+	repository.InitDB(datapath)
 
 	fmt.Println("Введите своё имя")
 
@@ -52,9 +42,25 @@ func main() {
 
 	name := scanner.Text()
 
-	fmt.Println("Ваше имя: ", name)
+	fmt.Println("Введите пороль: ")
 
-	handler.Serv(FileName)
+	scanner.Scan()
+
+	password := scanner.Text()
+
+	var userRole string
+
+	if password == "" {
+		userRole = "Guest"
+	} else {
+		userRole = "Admin"
+	}
+
+	userID, _ := service.RegisterUser(name, password, userRole)
+
+	fmt.Println("Ваш Id", userID)
+
+	//handler.Serv(FileName)
 
 	for {
 		//=========================================
@@ -135,9 +141,14 @@ func main() {
 				Description: desc,
 			}
 
-			service.AddLesson(lesson)
+			err = service.AddLesson(lesson)
 
-			service.SaveToFile( datapath)
+			if err != nil {
+				fmt.Println(err)
+				continue
+
+			}
+
 			continue
 
 		//=================================================
@@ -151,13 +162,12 @@ func main() {
 			strid := scanner.Text()
 			id, err := strconv.Atoi(strid)
 
-			if err != nil{
-				fmt.Errorf("Invalid type id")
-				return
+			if err != nil {
+				fmt.Println("Invalid type id")
+				continue
 			}
 
 			service.DeleteLesson(id)
-			service.SaveToFile(datapath)
 
 		//=================================================
 
@@ -170,7 +180,7 @@ func main() {
 				continue
 			}
 
-			service.SortTodayLesseonsTime()
+			service.SortTodayLessonsTime(lessons)
 
 			fmt.Println("📚 Расписание:")
 
@@ -209,7 +219,7 @@ func main() {
 				fmt.Println("")
 				scanner.Scan()
 				day := scanner.Text()
-				lessons := service.FilterListDay(day)
+				lessons := service.DayLessons(day)
 
 				for _, d := range lessons {
 					fmt.Println("")
@@ -242,7 +252,7 @@ func main() {
 
 			lessons := service.TodayLessons()
 
-			service.SortTodayLesseonsTime()
+			service.SortTodayLessonsTime(lessons)
 
 			for _, l := range lessons {
 
@@ -298,7 +308,6 @@ func main() {
 			value := scanner.Text()
 
 			service.EditLesson(index, choice, value)
-			service.SaveToFile(datapath)
 
 		case "выход", "6":
 			fmt.Println("")
@@ -308,7 +317,7 @@ func main() {
 			input = strings.ToLower(input)
 			if input == "нет" {
 
-				os.Remove("data/" + FileName + ".json")
+				os.Remove("data/" + FileName + ".db")
 				fmt.Println("Файл удалён!!!")
 				fmt.Println("")
 				fmt.Println("Пока!!!")

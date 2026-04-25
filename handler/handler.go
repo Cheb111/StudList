@@ -37,7 +37,6 @@ func Serv(FileName string) {
 
 	http.ListenAndServe(":8080", nil)
 
-	service.SaveToFile("data/" + fileName + ".json")
 
 }
 
@@ -81,7 +80,7 @@ func addLesson(w http.ResponseWriter, r *http.Request) {
 	}
 
 	service.AddLesson(newLesson)
-	service.SaveToFile("data/" + fileName + ".json")
+	
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("Lesson added"))
@@ -109,7 +108,7 @@ func delLesson(w http.ResponseWriter, r *http.Request) {
 	}
 
 	service.DeleteLesson(req.ID)
-	service.SaveToFile("data/" + fileName + ".json")
+	
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Lesson deleted"))
@@ -137,7 +136,6 @@ func updateLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	service.SaveToFile("data/" + fileName + ".json")
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Lesson updated"))
