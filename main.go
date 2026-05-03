@@ -29,12 +29,7 @@ func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 
-	fmt.Println("Введиет название файла: ")
-
-	scanner.Scan()
-	FileName := scanner.Text()
-	datapath := "data/" + FileName + ".db"
-	repository.InitDB(datapath)
+	repository.InitDB()
 
 	fmt.Println("Введите своё имя")
 
@@ -42,6 +37,40 @@ func main() {
 
 	name := scanner.Text()
 
+	if name == "" {
+		fmt.Println("Пустая строка")
+		return
+	}
+
+	var gender string
+
+	for {
+		fmt.Println("Выберите пол")
+		fmt.Println("1 - male")
+		fmt.Println("2 - female")
+
+		scanner.Scan()
+		input := scanner.Text()
+		choice, err := strconv.Atoi(input)
+
+		if err != nil {
+			fmt.Println("Введите число 1 или 2:")
+			continue
+		}
+
+		if choice == 1 {
+			gender = "male"
+			break
+		} else if choice == 2 {
+			gender = "female"
+			break
+		} else {
+			fmt.Println("Неверный ввод:")
+		}
+	}
+
+	var subgroups_id = 1
+	
 	fmt.Println("Введите пороль: ")
 
 	scanner.Scan()
@@ -56,8 +85,40 @@ func main() {
 		userRole = "Admin"
 	}
 
-	userID, _ := service.RegisterUser(name, password, userRole)
+	fmt.Println("Введите название университета (полностью): ")
+	scanner.Scan()
+	UniName := scanner.Text()
 
+	uniID, err := service.GetOrCreateUni(UniName)
+
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+
+	fmt.Println("Введите название группы: ")
+	scanner.Scan()
+	group_name := scanner.Text()
+
+	fmt.Println("Введите курс: ")
+
+	scanner.Scan()
+	courseStr := scanner.Text()
+	course, err := strconv.Atoi(courseStr)
+
+	groupId, err := service.GetOrCreateGroups(group_name, course, uniID)
+
+	if err != nil {
+		fmt.Println("Error: ", err)
+		return
+	}
+
+	userID, err := service.RegisterUser(name, gender, subgroups_id, password, userRole, groupId, uniID)
+
+	if err != nil {
+		fmt.Println("Error", err)
+		return
+	}
 	fmt.Println("Ваш Id", userID)
 
 	//handler.Serv(FileName)
@@ -88,65 +149,79 @@ func main() {
 
 		case "добавить", "1":
 
-			fmt.Println("")
-			fmt.Println("Введите название предмета: ")
+			if userRole == "Admin" {
 
-			scanner.Scan()
-			title := scanner.Text()
+				fmt.Println("")
+				fmt.Println("Введите название предмета: ")
 
-			fmt.Println("")
-			fmt.Println("Выберите дату: ")
+				scanner.Scan()
+				title := scanner.Text()
 
-			for i, d := range weeks {
-				fmt.Printf("%d - %s\n", i+1, d)
-			}
+				if err != nil {
+					fmt.Println("error", err)
+					return
+				}
 
-			scanner.Scan()
-			date := scanner.Text()
+				fmt.Println("")
+				fmt.Println("Выберите дату: ")
 
-			index, _ := strconv.Atoi(date)
+				for i, d := range weeks {
+					fmt.Printf("%d - %s\n", i+1, d)
+				}
 
-			if index < 1 || len(weeks) < index {
-				fmt.Println("Невереный выбор!!!")
+				scanner.Scan()
+				date := scanner.Text()
+
+				index, _ := strconv.Atoi(date)
+
+				if index < 1 || len(weeks) < index {
+					fmt.Println("Невереный выбор!!!")
+					continue
+				}
+
+				week := weeks[index-1]
+
+				fmt.Println("")
+				fmt.Println("Введите время в формате (xx:xx) : ")
+
+				scanner.Scan()
+				times := scanner.Text()
+
+				_, err = time.Parse("15:04", times)
+
+				if err != nil {
+					fmt.Println("Неверный формат времени(xx:xx)")
+					continue
+
+				}
+
+				fmt.Println("")
+				fmt.Println("Введите описание(если надо): ")
+
+				scanner.Scan()
+				desc := scanner.Text()
+
+				fmt.Println("")
+				lesson := models.Lesson{
+					User:        name,
+					Title:       title,
+					Day:         week,
+					Time:        times,
+					Description: desc,
+					GroupId:     groupId,
+				}
+
+				err = service.AddLesson(lesson)
+
+				if err != nil {
+					fmt.Println(err)
+					continue
+
+				}
+			} else {
+				fmt.Println("У вас недостаточно прав(((")
+
 				continue
-			}
-
-			week := weeks[index-1]
-
-			fmt.Println("")
-			fmt.Println("Введите время в формате (xx:xx) : ")
-
-			scanner.Scan()
-			times := scanner.Text()
-
-			_, err := time.Parse("15:04", times)
-
-			if err != nil {
-				fmt.Println("Неверный формат времени(xx:xx)")
-				continue
-
-			}
-
-			fmt.Println("")
-			fmt.Println("Введите описание(если надо): ")
-
-			scanner.Scan()
-			desc := scanner.Text()
-
-			fmt.Println("")
-			lesson := models.Lesson{
-				Title:       title,
-				Day:         week,
-				Time:        times,
-				Description: desc,
-			}
-
-			err = service.AddLesson(lesson)
-
-			if err != nil {
-				fmt.Println(err)
-				continue
-
 			}
 
 			continue
@@ -155,19 +230,25 @@ func main() {
 
 		case "удалить", "2":
 
-			fmt.Println("Номер предмета")
+			if userRole == "Admin" {
 
-			scanner.Scan()
+				fmt.Println("Номер предмета")
 
-			strid := scanner.Text()
-			id, err := strconv.Atoi(strid)
+				scanner.Scan()
 
-			if err != nil {
-				fmt.Println("Invalid type id")
+				strid := scanner.Text()
+				id, err := strconv.Atoi(strid)
+
+				if err != nil {
+					fmt.Println("Invalid type id")
+					continue
+				}
+
+				service.DeleteLesson(id)
+			} else {
+				fmt.Println("У вас недостаточно прав(((")
 				continue
 			}
-
-			service.DeleteLesson(id)
 
 		//=================================================
 
@@ -277,37 +358,43 @@ func main() {
 			//=================================================
 
 		case "редакт", "5":
-			fmt.Println("")
-			fmt.Println("Введите номер задачи: ")
 
-			scanner.Scan()
-			id := scanner.Text()
-			index, err := strconv.Atoi(id)
+			if userRole == "Admin" {
+				fmt.Println("")
+				fmt.Println("Введите номер задачи: ")
 
-			if err != nil {
-				fmt.Println("Ошибка")
-				break
+				scanner.Scan()
+				id := scanner.Text()
+				index, err := strconv.Atoi(id)
+
+				if err != nil {
+					fmt.Println("Ошибка")
+					break
+				}
+
+				fmt.Println("")
+				fmt.Println("\nВведите что хотите изменить: ")
+				fmt.Println("")
+				fmt.Println("1 - название")
+				fmt.Println("2 - время")
+				fmt.Println("3 - дата")
+				fmt.Println("4 - описание")
+
+				scanner.Scan()
+				choice := scanner.Text()
+				choice = strings.ToLower(choice)
+
+				fmt.Println("")
+				fmt.Println("Введите новое значени:")
+
+				scanner.Scan()
+				value := scanner.Text()
+
+				service.EditLesson(index, choice, value)
+			} else {
+				fmt.Println("У вас недостаточно прав(((")
+				continue
 			}
-
-			fmt.Println("")
-			fmt.Println("\nВведите что хотите изменить: ")
-			fmt.Println("")
-			fmt.Println("1 - название")
-			fmt.Println("2 - время")
-			fmt.Println("3 - дата")
-			fmt.Println("4 - описание")
-
-			scanner.Scan()
-			choice := scanner.Text()
-			choice = strings.ToLower(choice)
-
-			fmt.Println("")
-			fmt.Println("Введите новое значени:")
-
-			scanner.Scan()
-			value := scanner.Text()
-
-			service.EditLesson(index, choice, value)
 
 		case "выход", "6":
 			fmt.Println("")
@@ -317,7 +404,7 @@ func main() {
 			input = strings.ToLower(input)
 			if input == "нет" {
 
-				os.Remove("data/" + FileName + ".db")
+				//os.Remove("data/" + FileName + ".db")
 				fmt.Println("Файл удалён!!!")
 				fmt.Println("")
 				fmt.Println("Пока!!!")

@@ -1,10 +1,8 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"stud/models"
@@ -15,34 +13,21 @@ import (
 var lessID int = 1
 var groupid int = 1
 
-
 func AddLesson(l models.Lesson) error {
 
-	lessons := repository.GetLessons()
-
-	for _, r := range lessons {
-		if r.Day == l.Day && r.Time == l.Time {
-			return errors.New("err")
-		}
-
-	}
-
-	l.ID = lessID
-	lessID++
-	l.GroupId = groupid
-	
 	return repository.AddLesson(l)
 
 }
 
+
 func DeleteLesson(id int) error {
-	
+
 	lessons := repository.GetLessons()
 
 	for i, l := range lessons {
 		if l.ID == id {
 			lessons = append(lessons[:i], lessons[i+1:]...)
-			
+
 			return repository.DeleteLesson(id)
 		}
 	}
@@ -129,8 +114,6 @@ func EditLesson(id int, field string, value string) error {
 	return fmt.Errorf("lesson not found")
 
 }
-
-
 
 func FilterListLess(less string) []models.Lesson {
 	lessons := repository.GetLessons()
@@ -246,7 +229,6 @@ func NextLessonToday() *models.Lesson {
 
 func SortTodayLessonsTime(lessons []models.Lesson) {
 
-
 	sort.Slice(lessons, func(i, j int) bool {
 		t1, _ := time.Parse("15:04", lessons[i].Time)
 		t2, _ := time.Parse("15:04", lessons[j].Time)
@@ -288,44 +270,18 @@ func UpdateLesson(updated models.Lesson) error {
 
 //===================================================================================
 
-func SaveToFile(filepath string) error {
-	lessons := repository.GetLessons()
-	file, err := os.Create(filepath)
-
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	if	err := json.NewEncoder(file).Encode(lessons); err != nil{
-		return err
-	}
-
-	return nil
-}
-
-func LoadFromFile(filepath string) ([]models.Lesson, error) {
-
-	file, err := os.Open(filepath)
-
-	var lessons []models.Lesson
-
-	if err != nil {
-		return []models.Lesson{}, err
-	}
-	defer file.Close()
-
-
-	if err := json.NewDecoder(file).Decode(&lessons); err != nil{
-		return lessons, err
-	}
-	return lessons, nil
-}
-
 //====================================================
 
-func RegisterUser(name string, password string, userRole string)(int, error){
-	return repository.CreateUser(name, password, userRole)
+func RegisterUser(name string, gender string, subgroups_id int, password string, userRole string, groupId int, UniID int) (int, error) {
+	return repository.CreateUser(name, gender,subgroups_id , password, userRole, groupId, UniID)
+}
+
+func GetOrCreateGroups(name string, course int, uniId int)(int, error){
+	return repository.GetOrCreateGroup(name, course, uniId)
+}
+
+func GetOrCreateUni(name string)(int, error){
+	return repository.GetOrCreateUni(name)
 }
 
 //====================================================
