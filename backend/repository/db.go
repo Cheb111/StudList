@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS subgroups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT,
   group_id INTEGER
+  
 );
 `
 
